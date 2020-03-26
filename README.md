@@ -6,9 +6,32 @@ We focus here on SPAs that are distribute in one or several js files together wi
 
 This server will be tested with a default webpack setup. But I hope it can also serve other setups well enough.
 
-## Options
+## Usage
 
+```
+Usage:
 
+         spas.exe [options]
+
+Available options:
+
+        --configfile    a path to a config file that contains the configuration for the spa server (default: spas.config.json)
+        --address       address to listen on (default: )
+        --port          port to listen on (default: 8080)
+        --servefolder   the folder to serve (default: current working directory, e.g.: /app)
+        --htmlindexfile path to the root index file of the spa app (default: index.html)
+```
+
+## Example Config File
+
+```json
+{
+    "address": "127.0.0.1",
+    "port": "8089",
+    "serveFolder": "/wwwroot",
+    "htmlIndexFile": "index.html"
+}
+```
 
 ## Best Practices
 

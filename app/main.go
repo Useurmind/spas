@@ -13,7 +13,7 @@ func handler(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	if sliceContains(os.Args, "-h") {
+	if sliceContains(os.Args, "-h") || sliceContains(os.Args, "--help"){
 		printHelp()
 		return
 	}

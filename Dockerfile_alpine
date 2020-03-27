@@ -4,11 +4,10 @@ COPY . .
 ENV CGO_ENABLED 0
 RUN go build -o spas ./app
 RUN chmod +x ./spas
-RUN echo "spasuser:x:65534:65534:spasuser:/:" > /etc_passwd
 
-FROM scratch as run
+FROM alpine as run
 WORKDIR /app
-COPY --from=build /work/spas .
-COPY --from=build /etc_passwd /etc/passwd
+RUN addgroup -S spasgroup && adduser -S spasuser -G spasgroup
 USER spasuser
+COPY --from=build /work/spas .
 ENTRYPOINT ["/app/spas"]

@@ -32,7 +32,11 @@ func NewSPASHandler(options *Options) SPASHandler {
 }
 
 func (h SPASHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	h.ensureInit()
+	err := h.ensureInit()
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
 
 	filePath, hasStaticFile := h.staticFiles[req.URL.Path]
 
@@ -50,9 +54,14 @@ func (h SPASHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, filePath)
 }
 
-func (h *SPASHandler) ensureInit() {
+func (h *SPASHandler) ensureInit() error {
 	h.ensureFileHandler()
-	h.ensureStaticFilesMap()
+	err := h.ensureStaticFilesMap()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *SPASHandler) ensureFileHandler() {
@@ -61,29 +70,43 @@ func (h *SPASHandler) ensureFileHandler() {
 	}
 }
 
-func (h *SPASHandler) ensureStaticFilesMap() {
+func (h *SPASHandler) ensureStaticFilesMap() error {
 	if len(h.staticFiles) == 0 {
-		err := filepath.Walk(h.options.ServeFolder,
+		serveFolder, err := cleanFilePath(h.options.ServeFolder)
+		if err != nil {
+			return err
+		}
+	
+		log.Println("Absolute serve folder is", serveFolder)
+
+		err = filepath.Walk(serveFolder,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
+
+				cleanedPath, err := cleanFilePath(path)
+				if err != nil {
+					return err
+				}
+
 				if !info.IsDir() {
 					// remember static file
-					relativePath := strings.TrimPrefix(path, h.options.ServeFolder)
+					relativePath := strings.TrimPrefix(cleanedPath, serveFolder)
 					urlPath := strings.ReplaceAll(relativePath, "\\", "/")
 					urlPath = cleanURLPath(urlPath)
-					h.staticFiles[urlPath] = path
+					h.staticFiles[urlPath] = cleanedPath
 
-					log.Printf("Found static file %s, available under url path %s", path, urlPath)
+					log.Printf("Found static file %s, available under url path %s", cleanedPath, urlPath)
 				}
 				return nil
 			})
 		if err != nil {
 			log.Println(err)
 		}
-
 	}
+
+	return nil
 }
 
 // the urlPath should start with a single slash
@@ -98,6 +121,16 @@ func pathEndsOnExtension(urlPath string) bool {
 	// pathParts := strings.Split(cleanPath, "/")
 	// possibleFileName := pathParts[len(pathParts) - 1]
 	return path.Ext(cleanPath) != ""
+}
+
+// make sure input and file paths match
+func cleanFilePath(filePath string) (string, error) {
+	cleanedPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	return cleanedPath, nil
 }
 
 // remove double quotes

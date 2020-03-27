@@ -1,0 +1,3 @@
+FROM spas:alpine
+COPY test_resources/test_app /www
+ENV SPAS_SERVEFOLDER /www

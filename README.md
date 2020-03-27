@@ -48,7 +48,9 @@ The config file is a json file. By default the file `spas.config.json` is read f
 
 ### Docker
 
-You will have to build your own docker image or add a volume that contains the spa to serve
+You can find the docker image on dockerhub: https://hub.docker.com/r/useurmind/spas
+
+You will have to build your own docker image with the spa files or add a volume that contains the spa to serve.
 
 Run test test app by building a docker image with it:
 ```
@@ -59,7 +61,7 @@ docker run -p 8080:8080 spas:test
 Run the test app by adding a mount to the folder:
 
 ```
-docker run -p 8080:8080 -v "<path_to_spas_git_root>/test_resources/test_app:/www" -e SPAS_SERVEFOLDER=/www spas
+docker run -p 8080:8080 -v <path_to_spas_git_root>/test_resources/test_app:/www -e SPAS_SERVEFOLDER=/www useurmind/spas
 ```
 
 (Make sure the slashes are all backslashes for the soure folder on windows -.-)

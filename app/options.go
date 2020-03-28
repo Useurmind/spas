@@ -2,26 +2,29 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"os"
+	"path/filepath"
+	"strconv"
 	"fmt"
-	"strings"
+	"io/ioutil"
 	"log"
+	"os"
+	"path"
+	"strings"
 )
 
 // Options for the spa server.
 // The options will be applied in the following precedence (top most wins)
 // 1. command line arguments
 // 2. environment variables
-// 3. ConfigFile 
-// 
+// 3. ConfigFile
+//
 // Command line arguments are added with all lowercase names of the actual options preceeded by a double slash.
 // __Example__: `spas --port 8090`
 //
 // Environment variables are named all uppercase with a prefix of SPAS_
 // __Example__: export SPAS_PORT=8090
 //
-// The config file is either `spas.config.json` in the current working directory or you need to specify it either via 
+// The config file is either `spas.config.json` in the current working directory or you need to specify it either via
 // command line or environment variable.
 type Options struct {
 	// A config file that is used for configuration.
@@ -47,6 +50,15 @@ type Options struct {
 	// The index file usually loads the root js bundle file for rendering the SPA.
 	// Default is index.html.
 	HTMLIndexFile string
+
+	// The path to the file with the server ssl certificate (chain) to use.
+	CertFilePath string
+
+	// The path to the file with the private key for the server ssl certificate.
+	KeyFilePath string
+
+	// If this is set the spas server will serve http.
+	ForceHTTP bool
 }
 
 // DefaultOptions returns the default options.
@@ -63,6 +75,9 @@ func DefaultOptions() (*Options, error) {
 	options.Port = "8080"
 	options.ServeFolder = wd
 	options.HTMLIndexFile = "index.html"
+	options.CertFilePath = "spas_cert.pem"
+	options.KeyFilePath = "spas_key.pem"
+	options.ForceHTTP = false
 
 	return &options, nil
 }
@@ -96,7 +111,7 @@ func GetOptions() (*Options, error) {
 			}
 
 		}
-	}	
+	}
 
 	address, err := getOption("address", options.Address, defaultOptions.Address)
 	if err != nil {
@@ -118,14 +133,37 @@ func GetOptions() (*Options, error) {
 		return nil, err
 	}
 
+	certFilePath, err := getOption("CertFilePath", options.CertFilePath, defaultOptions.CertFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	keyFilePath, err := getOption("KeyFilePath", options.KeyFilePath, defaultOptions.KeyFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	forceHTTP, err := getOptionFlag("ForceHTTP", options.ForceHTTP, defaultOptions.ForceHTTP)
+	if err != nil {
+		return nil, err
+	}
+
 	options.ConfigFile = configFile
 	options.Address = address
 	options.Port = port
 	options.ServeFolder = serveFolder
 	options.HTMLIndexFile = htmlIndexFile
+	options.CertFilePath = certFilePath
+	options.KeyFilePath = keyFilePath
+	options.ForceHTTP = forceHTTP
 
 	log.Println("Applied options are:")
 	options.Log()
+
+	err = options.WarnProblems()
+	if err != nil {
+		return nil, err
+	}
 
 	return &options, nil
 }
@@ -140,6 +178,49 @@ func (o *Options) Log() {
 	}
 }
 
+// WarnProblems writes problems in the options to the log output.
+func (o *Options) WarnProblems() error {
+	if o.CertFilePath != "" && o.KeyFilePath == "" {
+		log.Println("WARNING: CertFilePath is set, but KeyFilePath is missing. If you want to serve SSL you need a key file containing the private key for the SSL certificate")
+	}
+
+	absServeFolder, err := filepath.Abs(o.ServeFolder)
+	if err != nil {
+		return err
+	}
+
+	if o.KeyFilePath != "" {
+		keyFileDirectory, _ := path.Split(o.KeyFilePath)
+
+		absKeyFileDir, err := filepath.Abs(keyFileDirectory)
+		if err != nil {
+			return err
+		}
+
+		if strings.HasPrefix(absKeyFileDir, absServeFolder) {
+			log.Println("WARNING: Private ssl key lies in", absKeyFileDir, "which is a subdirectory of the ServeFolder", absServeFolder, ". This is very dangerous as the private ssl key will be served.")
+		}
+	}
+
+	if absServeFolder == "/" {
+		log.Println("WARNING: You are serving the root folder. This is very dangerous as the whole file system will be served. Put your served files in a separate folder.")
+	}
+
+	return nil
+}
+
+func getOptionFlag(optionName string, configFileValue bool, defaultValue bool) (bool, error) {
+	strValue, err := getOption(optionName, strconv.FormatBool(configFileValue), strconv.FormatBool(defaultValue))
+
+	if err != nil {
+		// the only error ever return is when no value is found for an option on the command line
+		// this indicates that the flag is set
+		return true, nil
+	}
+
+	return strconv.ParseBool(strValue)
+}
+
 func getOption(optionName string, configFileValue string, defaultValue string) (string, error) {
 	log.Printf("Searching option %s (defaultValue is %s)", optionName, defaultValue)
 	found, value, err := findArgForOption(fmt.Sprintf("--%s", strings.ToLower(optionName)))
@@ -150,15 +231,15 @@ func getOption(optionName string, configFileValue string, defaultValue string) (
 	if !found {
 		varName := strings.ToUpper(optionName)
 		log.Printf("  Trying to get option from environment variable %s", varName)
-		value = os.Getenv(fmt.Sprintf("SPAS_%s", varName))
+		value, found = os.LookupEnv(fmt.Sprintf("SPAS_%s", varName))
 	}
 
-	if value == "" && configFileValue != "" {
+	if !found && configFileValue != "" {
 		log.Printf("  Applying option from config file")
 		value = configFileValue
 	}
 
-	if value == "" {
+	if !found && value == "" {
 		log.Printf("  Option nowhere found, applying default value %s", defaultValue)
 		value = defaultValue
 	} else {
@@ -168,17 +249,17 @@ func getOption(optionName string, configFileValue string, defaultValue string) (
 	return value, nil
 }
 
-func findArgForOption(optionName string) (bool, string, error) {	
+func findArgForOption(optionName string) (bool, string, error) {
 	log.Printf("  Trying to get option from command line argument %s", optionName)
 	for i := 0; i < len(os.Args); i++ {
 		arg := os.Args[i]
 
-		if arg == optionName  {
-			if i < len(os.Args) - 1 {
+		if arg == optionName {
+			if i < len(os.Args)-1 {
 				argValue := os.Args[i+1]
 				return true, argValue, nil
-			} 
-			
+			}
+
 			return true, "", fmt.Errorf("No value given for option %s", optionName)
 		}
 	}

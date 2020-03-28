@@ -2,5 +2,8 @@
     "address": "127.0.0.1",
     "port": "8089",
     "serveFolder": "/wwwroot",
-    "htmlIndexFile": "index2.html"
+    "htmlIndexFile": "index2.html",
+    "certFilePath": "spas_cert2.pem",
+    "keyFilePath": "spas_key2.pem",
+    "forceHTTP": true
 }

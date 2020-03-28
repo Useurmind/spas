@@ -22,15 +22,18 @@ Here is the command line help:
 ```
 Usage:
 
-         spas.exe [options]
+         app.exe [options]
 
 Available options:
 
         --configfile    a path to a config file that contains the configuration for the spa server (default: spas.config.json)
         --address       address to listen on (default: )
         --port          port to listen on (default: 8080)
-        --servefolder   the folder to serve (default: current working directory, e.g.: /app)
+        --servefolder   the folder to serve (default: current working directory, e.g.: C:\Users\Jochen\Projekte\Projekte\spas)
         --htmlindexfile path to the root index file of the spa app (default: index.html)
+        --certfilepath  path to the ssl certificate (chain) for the server (default: spas_cert.pem)
+        --keyfilepath   path to the private key of the ssl certificate of the server (default: spas_key.pem)
+        --forcehttp     Set this flag to force serving http (default: false)
 ```
 
 ## Example Config File
@@ -42,7 +45,10 @@ The config file is a json file. By default the file `spas.config.json` is read f
     "address": "127.0.0.1",
     "port": "8089",
     "serveFolder": "/wwwroot",
-    "htmlIndexFile": "index.html"
+    "htmlIndexFile": "index2.html",
+    "certFilePath": "spas_cert2.pem",
+    "keyFilePath": "spas_key2.pem",
+    "forceHTTP": true
 }
 ```
 

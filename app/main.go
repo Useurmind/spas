@@ -8,6 +8,8 @@ import (
 	"path"
 	"strings"
 	"strconv"
+
+	"github.com/Useurmind/spas/handler"
 )
 
 func main() {
@@ -16,12 +18,12 @@ func main() {
 		return
 	}
 
-	options, err := GetOptions()
+	options, err := handler.GetOptions()
 	if err != nil {
 		panic(err)
 	}
 
-	SPASHandler := NewSPASHandler(options)
+	SPASHandler := handler.NewSPASHandler(options)
 
 	listenOn := fmt.Sprintf("%s:%s", options.Address, options.Port)
 	log.Println("SPA server listening on", listenOn)
@@ -39,7 +41,7 @@ func main() {
 
 func printHelp() {
 	_, appName := path.Split(strings.ReplaceAll(os.Args[0], "\\", "/"))
-	defaultOptions, err := DefaultOptions()
+	defaultOptions, err := handler.DefaultOptions()
 	if err != nil {
 		panic(err)
 	}

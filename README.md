@@ -76,6 +76,36 @@ docker run -p 8080:8080 -v <path_to_spas_git_root>/test_resources/test_app:/www 
 
 Basically it servers all files in the `servefolder` as is via the golang file server functionality. It a file is not found it will serve the `htmlindexfile` file.
 
+## Use as module in your own app
+
+You can use the spas handler in your own app. First get the module:
+
+```
+go get github.com/Useurmind/spas
+```
+
+Then import the handler package.
+
+```golang
+import (
+    "github.com/Useurmind/spas/handler
+)
+```
+
+And finally create a handler to serve the SPA:
+
+```golang
+spasOptions := handler.Options{
+    // only these two options are actually used by the handler
+    // the rest is only used to start the spa server and not relevant here
+    ServeFolder: "www",
+    HTMLIndexFile: "index.html",
+}
+spasHandler := handler.NewSPASHandler(&spasOptions)
+```
+
+The spas handler is just a normal [http.Handler](https://golang.org/pkg/net/http/#Handler) you can use in the usual places.
+
 ## Best Practices
 
 ### Do not serve root

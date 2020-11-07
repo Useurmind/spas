@@ -26,7 +26,7 @@ type SPASHandler struct {
 
 func NewSPASHandler(options *Options) SPASHandler {
 	return SPASHandler{
-		options: options,
+		options:     options,
 		staticFiles: make(map[string]string),
 	}
 }
@@ -49,7 +49,7 @@ func (h SPASHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		filePath = path.Join(h.options.ServeFolder, h.options.HTMLIndexFile)
 	}
 
-	log.Printf("Serving url %s with file %s", req.RequestURI, filePath)
+	log.Printf("Serving url %s with file %s", req.URL.Path, filePath)
 
 	http.ServeFile(w, req, filePath)
 }
@@ -76,7 +76,7 @@ func (h *SPASHandler) ensureStaticFilesMap() error {
 		if err != nil {
 			return err
 		}
-	
+
 		log.Println("Absolute serve folder is", serveFolder)
 
 		err = filepath.Walk(serveFolder,
